@@ -54,9 +54,12 @@ export const mockAgentPhases: AgentPhase[] = [
   {
     title: '规划阶段',
     agents: [
-      { name: '产品智能体', status: '空闲' },
-      { name: '架构师智能体', status: '空闲', detail: '刚完成第二次评估' },
-      { name: '任务拆解智能体', status: '空闲', detail: '刚完成拆解' },
+      // T0 时刻锚定:14:14 三产出已完成 → 14:15 启动执行
+      // 规划阶段 3 个智能体都已交付完毕,语义"已完成工作",非"功能未启用"
+      // 任务拆解智能体的工作语义是"7 任务拆解"(V0.2.0 阶段任务-7 占位但属于完整拆解产出)
+      { name: '产品智能体', status: '空闲', detail: '已完成 PRD 撰写' },
+      { name: '架构师智能体', status: '空闲', detail: '已完成可行性评估' },
+      { name: '任务拆解智能体', status: '空闲', detail: '已完成 7 任务拆解' },
     ],
   },
   {
@@ -79,34 +82,41 @@ export const mockAgentPhases: AgentPhase[] = [
 ]
 
 // ============ 事件流(底部事件流)============
-// 来源:docs/06 §11.1 完整时序事件流
+// 来源:docs/06 §11.1 V0.2.1 完整时序事件流(14:00-14:15 段)
 // V0.2.0 阶段差异:不包含任务-7 相关条目(docs/06 §11.2)
 // 截止时刻:T0(14:15)启动执行后第一刻,与状态栏对齐
 // 顺序:最新在上(底部事件流按数组顺序从上到下渲染)
+// 协作模型并行升级后:协同澄清 4 轮(产品 + 架构师并行)+ 闸门 1 + 三产出并行 + 闸门 2
 export type RecentEvent = { time: string; text: string }
 
 export const mockRecentEvents: RecentEvent[] = [
   { time: '14:15', text: '后端智能体已开始执行任务-1' },
   { time: '14:15', text: '项目管理智能体已分发任务-1 给后端智能体' },
   { time: '14:15', text: '需求-001 已启动执行(主状态:执行中)— 用户点击"启动执行"' },
+  { time: '14:14', text: '规划阶段三产出完成,需求-001 已进入闸门 2 review' },
   { time: '14:14', text: '任务拆解智能体已产出 7 任务依赖图' },
-  { time: '14:13', text: '需求-001 进入拆解中(主状态:拆解中)' },
-  { time: '14:13', text: '架构师智能体已完成二次评估,R-001 降级为中(主状态:PRD 已定)' },
-  { time: '14:10', text: '需求-001 二次澄清已完成,XSS 缓解策略已记录到 PRD' },
-  {
-    time: '14:08',
-    text: '需求-001 已驳回,产品智能体启动二次澄清(主状态:澄清中,异常标签:已驳回)',
-  },
-  { time: '14:08', text: '架构师智能体已完成首次可行性评估,识别 1 项高风险 R-001' },
-  { time: '14:08', text: '架构师智能体已开始可行性评估' },
-  { time: '14:08', text: '需求-001 PRD 已确认(主状态:PRD 已定)' },
-  { time: '14:07', text: '需求-001 PRD 草稿已生成,等待用户确认' },
-  { time: '14:06', text: '需求-001 第 3 轮澄清开始 + 用户确认' },
+  { time: '14:14', text: '产品智能体已完成 PRD 撰写' },
+  { time: '14:13', text: '任务拆解智能体已开始拆解' },
+  { time: '14:13', text: '架构师智能体已完成可行性评估,识别 5 项风险(0 高 + 4 中 + 1 低)' },
+  { time: '14:10', text: '任务拆解智能体已上线(等待规划稳定中)' },
+  { time: '14:10', text: '架构师智能体已开始可行性评估' },
+  { time: '14:10', text: '产品智能体已开始撰写 PRD' },
+  { time: '14:10', text: '需求-001 已冻结需求,进入规划阶段(主状态:规划中 · 产出子阶段)— 用户点击"冻结需求,开始规划"' },
+  { time: '14:09', text: '产品智能体已展示澄清结论摘要,等待用户在闸门 1 决策' },
+  { time: '14:08', text: '产品智能体已宣布协同澄清对齐' },
+  { time: '14:08', text: '需求-001 第 4 轮澄清已完成(架构师主导)' },
+  { time: '14:07', text: '架构师智能体已识别 R-001(XSS),用户当场给出双保险策略方向(D-1)' },
+  { time: '14:07', text: '需求-001 第 4 轮澄清开始(架构师主导:安全与边界)' },
+  { time: '14:06', text: '需求-001 第 3 轮澄清已完成' },
+  { time: '14:05', text: '架构师智能体已对第 3 轮插话补充技术问题(utf8mb4)' },
+  { time: '14:05', text: '需求-001 第 3 轮澄清开始(产品主导:UX 边界)' },
   { time: '14:04', text: '需求-001 第 2 轮澄清已完成' },
-  { time: '14:03', text: '需求-001 第 2 轮澄清开始' },
+  { time: '14:03', text: '架构师智能体已对第 2 轮插话补充技术问题(状态枚举 + 复合索引)' },
+  { time: '14:03', text: '需求-001 第 2 轮澄清开始(产品主导:审核机制)' },
   { time: '14:02', text: '需求-001 第 1 轮澄清已完成' },
-  { time: '14:01', text: '需求-001 第 1 轮澄清开始' },
-  { time: '14:01', text: '产品智能体已开始与用户澄清需求-001' },
+  { time: '14:01', text: '架构师智能体已对第 1 轮插话补充技术问题(关联表 vs JSON 字段)' },
+  { time: '14:01', text: '需求-001 第 1 轮澄清开始(产品主导:数据模型)' },
+  { time: '14:01', text: '产品 + 架构师智能体已开始与用户协同澄清需求-001(主状态:规划中 · 澄清子阶段)' },
   { time: '14:00', text: '需求-001 已创建(主状态:待澄清)' },
 ]
 
@@ -115,17 +125,27 @@ export const mockRecentEvents: RecentEvent[] = [
 export const mockLatestEvent: RecentEvent = mockRecentEvents[0]
 
 // ============ 需求级状态枚举 ============
-// 来源:docs/03 §需求状态机
+// 来源:docs/03 §需求状态机(协作模型并行升级后,5 主状态升级为 6 主状态)
+// "已放弃"为异常终态,带子语义"放弃 / 拆分";"已驳回"动线已废弃
 export type RequirementMainStatus =
   | '待澄清'
-  | '澄清中'
-  | 'PRD 已定'
-  | '拆解中'
+  | '规划中'
   | '执行中'
   | '待审查'
   | '已完成'
+  | '已放弃'
 
-export type RequirementAnomaly = '已驳回' | '部分拒绝' | '全量拒绝并反馈'
+// 异常标签:不再含"已驳回";新增"放弃/拆分"为系统在 ≥6 轮未对齐时自动施加的提示标签
+// (docs/03 §异常标签 - 放弃/拆分)
+export type RequirementAnomaly = '放弃/拆分' | '部分拒绝' | '全量拒绝并反馈'
+
+// 主动添加 · 协作模型升级需要:规划中主状态的 3 段子阶段标识
+// 用于在需求详情页顶部、任务板需求分组标题展示进度指示(docs/00 §三层粒度)
+export type RequirementSubPhase = 'clarify' | 'produce' | 'review'
+
+// 主动添加 · 协作模型升级需要:已放弃终态的子语义
+// 由系统在 ≥6 轮未对齐时,用户在三选项中选"放弃"或"拆分"后落定(docs/03 §异常标签)
+export type AbandonReason = '放弃' | '拆分'
 
 // ============ 需求列表(需求工作台主区域)============
 // 来源:docs/06 §端到端样例需求总览 - 需求清单(4 个需求样例)
@@ -134,10 +154,10 @@ export type RequirementAnomaly = '已驳回' | '部分拒绝' | '全量拒绝并
 //   1. 执行中 + 任务级人工介入待处理(阻塞下游调度,最紧迫)
 //   2. 待审查(需求级,等最终决策但不阻塞其他工作)
 //   3. 执行中(系统在跑,无需你介入)
-//   4. 拆解中 / PRD 已定
-//   5. 澄清中
-//   6. 待澄清
-//   7. 已完成
+//   4. 规划中(等闸门 1/2 决策,阻塞需求自身推进)
+//   5. 待澄清
+//   6. 已完成
+//   7. 已放弃(终态,优先级最低)
 // 同优先级内,按提交时间倒序。
 //
 // 排序规则的核心判断:阻塞下游调度的优先级 > 终端等待。
@@ -157,6 +177,11 @@ export type RequirementListItem = {
   // 是否有任务级单任务审查包待你接受(对应 docs/03 §任务级人工介入节点)
   // 仅当主状态为"执行中"时有意义,影响排序优先级
   hasPendingTaskReview?: boolean
+  // 主动添加 · 协作模型升级需要:仅当主状态为"规划中"时填,标识当前所处子阶段
+  // 行内紧凑展示不渲染该字段;需求详情页顶部 / 任务板需求分组标题渲染完整进度指示
+  subPhase?: RequirementSubPhase
+  // 主动添加 · 协作模型升级需要:仅当主状态为"已放弃"时填,标识终态子语义
+  abandonReason?: AbandonReason
 }
 
 const requirementsRaw: RequirementListItem[] = [
@@ -204,10 +229,10 @@ function attentionPriority(item: RequirementListItem): number {
   if (s === '执行中' && item.hasPendingTaskReview) return 1
   if (s === '待审查') return 2
   if (s === '执行中') return 3
-  if (s === '拆解中' || s === 'PRD 已定') return 4
-  if (s === '澄清中') return 5
-  if (s === '待澄清') return 6
-  if (s === '已完成') return 7
+  if (s === '规划中') return 4
+  if (s === '待澄清') return 5
+  if (s === '已完成') return 6
+  if (s === '已放弃') return 7
   return 8
 }
 
@@ -226,7 +251,7 @@ export const mockRequirementList = sortRequirementsByAttention(requirementsRaw)
 
 // ============ 当前焦点需求(需求-001 精简卡片)============
 // 来源:docs/06 §主流程需求基本字段(需求-001) + §6 任务图与依赖
-// 状态轨迹:展示 7 主状态(已驳回作为异常标签,不在主轨迹中体现);当前在"执行中"
+// 状态轨迹:展示 5 个正常路径主状态(已放弃为异常分支,不在主轨迹);当前在"执行中"
 // 任务图缩略图:T0 时刻 7 任务状态(V0.2.0 阶段任务-7 占位)
 export type FocusTrajectoryNode = {
   state: RequirementMainStatus
@@ -255,9 +280,7 @@ export const mockFocusRequirement: FocusRequirement = {
   mainStatus: '执行中',
   trajectory: [
     { state: '待澄清' },
-    { state: '澄清中' },
-    { state: 'PRD 已定' },
-    { state: '拆解中' },
+    { state: '规划中' },
     { state: '执行中', isCurrent: true },
     { state: '待审查' },
     { state: '已完成' },
@@ -329,73 +352,132 @@ export const mockRequirementDetail: RequirementDetail = {
     '新增"用户标签"功能。用户可以给自己打多个标签,标签会出现在用户主页头像下方,管理员可以审核标签。',
 }
 
-// ============ 视图 A · 多轮澄清 ============
-// 来源:docs/06 §多轮澄清记录(3 轮 + 二次澄清)
-export type ClarifyTurn = {
-  index: 1 | 2 | 3
+// ============ 视图 A · 协同澄清(产品 + 架构师并行,4 轮)============
+// 来源:docs/06 §协同澄清记录(4 轮)
+// 每轮含产品提问、架构师插话(可选)、用户回答三段
+// 第 4 轮架构师主导:productLed=false,architectMainQuestion 必填,productBackup 可选
+// 第 1-3 轮产品主导:productLed=true,productQuestion 必填,architectInterject 可选
+export type CollabClarifyTurn = {
+  index: 1 | 2 | 3 | 4
   topic: string
   time: string
-  question: string
-  answer: string
-  productResponse?: string
+  productLed: boolean
+  productQuestion?: string // 第 1-3 轮必填;第 4 轮无
+  architectInterject?: string // 第 1-3 轮可选
+  architectMainQuestion?: string // 第 4 轮必填
+  productBackup?: string // 第 4 轮可选(产品补位文案)
+  userAnswer: string
 }
 
-export const mockClarifyTurns: ClarifyTurn[] = [
+export const mockCollabClarifyTurns: CollabClarifyTurn[] = [
   {
     index: 1,
     topic: '数据模型',
     time: '14:01',
-    question:
-      '我已收到您的需求。在进入 PRD 之前,我有几个数据模型方面的问题需要澄清:\n1. 用户标签是从预定义集合中选,还是用户自由输入?\n2. 每个用户最多可以打多少个标签?\n3. 是否允许多个用户使用相同的标签名(后端是否需要去重)?',
-    answer:
-      '用户自由输入。每个用户最多 5 个标签(头像下方需要一行内放完)。允许重复名,后端去重(同一用户重复提交同一名称不报错,直接忽略)。',
+    productLed: true,
+    productQuestion:
+      '我已收到您的需求,架构师智能体已同步在场。我们会在 4 轮协同澄清里把需求对齐。先聊数据模型:\n1. 用户标签是从预定义集合中选,还是用户自由输入?\n2. 每个用户最多可以打多少个标签?\n3. 是否允许多个用户使用相同的标签名(后端是否需要去重)?',
+    architectInterject:
+      '(补充)如果是自由输入,需要顺便确认:存储是关联表还是 user 表的 JSON 字段?这关系到后续审核索引的设计。',
+    userAnswer:
+      '用户自由输入。每个用户最多 5 个标签(头像下方需要一行内放完)。允许重复名,后端去重(同一用户重复提交同一名称不报错,直接忽略)。存储用关联表(可独立索引、独立审核)。',
   },
   {
     index: 2,
     topic: '审核机制',
     time: '14:03',
-    question:
+    productLed: true,
+    productQuestion:
       '数据模型清楚了。接下来是审核机制:\n1. 管理员审核是先审后发布(标签提交后默认隐藏,审核通过后才显示),还是发布后审核(标签提交后立即显示,审核中如发现违规再撤下)?\n2. 违规标签如何处理?直接删除 / 隐藏并通知用户 / 加入黑名单?\n3. 标签数量大时,审核工作量如何控制?是否要全审,还是有规则化筛选?',
-    answer:
-      '发布后审核(乐观流程,UX 优先)。违规标签隐藏并通知用户(不删除原数据,保留申诉空间)。审核工作量目前不大,先全审,后续如压力大再加规则化筛选(留 V0.3 锚点)。',
+    architectInterject:
+      '(补充)如果发布后审核,服务端需要在 status 上做枚举建模(pending / approved / hidden)+ 复合索引,否则审核界面分页性能压不住。',
+    userAnswer:
+      '发布后审核(乐观流程,UX 优先)。违规标签隐藏并通知用户(不删除原数据,保留申诉空间)。审核工作量目前不大,先全审,后续如压力大再加规则化筛选(留 V0.3 锚点)。状态枚举三态没问题,索引细节交给架构师把控。',
   },
   {
     index: 3,
-    topic: 'UX 边界 + 用户确认进入 PRD',
-    time: '14:06',
-    question:
-      '最后确认几个 UX 边界问题:\n1. 标签长度上限多少字符?\n2. 是否支持 emoji?\n3. 是否参与搜索?\n您的回答会直接落到 PRD 验收标准里。',
-    answer:
-      '≤20 字符。支持 emoji(用 utf8mb4)。暂不参与搜索(留 V0.3 锚点)。\n没有其他问题了,请进入 PRD。',
-    productResponse:
-      '已记录。PRD 草稿已生成,3 轮澄清记录已归档。点击"确认进入 PRD"后将进入架构师评估阶段。',
+    topic: 'UX 边界',
+    time: '14:05',
+    productLed: true,
+    productQuestion:
+      '再确认 UX 边界:\n1. 标签长度上限多少字符?\n2. 是否支持 emoji?\n3. 是否参与搜索?',
+    architectInterject:
+      '(补充)如果支持 emoji,数据库字段必须是 utf8mb4,否则入库变 ?。这条建议直接落到 PRD 验收标准。',
+    userAnswer:
+      '≤20 字符。支持 emoji(架构师建议的 utf8mb4 采纳,直接进 PRD)。暂不参与搜索(留 V0.3 锚点)。',
+  },
+  {
+    index: 4,
+    topic: '安全与边界(架构师主导)',
+    time: '14:07',
+    productLed: false,
+    architectMainQuestion:
+      '前 3 轮业务侧已经清楚,我从架构视角追问几个安全和边界:\n1. 用户标签内容会出现在用户主页和管理员审核界面,如果输入未做转义,可能产生 XSS。是否要约束转义策略?当前可选:仅服务端 escape / 仅前端 React 自动转义 / 双保险(服务端 escape + 前端禁用 dangerouslySetInnerHTML)?\n2. 在线迁移加新关联表,user 表读路径 QPS 较高,是否接受灰度发布 + 索引提前创建?\n3. emoji 与 codepoint 边界(超长截断不能拆 grapheme cluster),是否在前端硬约束 + 后端二次校验?',
+    productBackup:
+      '(补位)架构师识别到 XSS 是高优先级风险,业务侧需要您给方向才能闭环。',
+    userAnswer:
+      '1. 选双保险(服务端 escape + 前端禁用 dangerouslySetInnerHTML),这条直接进 PRD 验收标准。\n2. 接受架构师方案(灰度 + 索引提前)。\n3. 接受。',
   },
 ]
 
-// 二次澄清(由架构师评估识别 R-001 高风险触发)
-export type SecondClarify = {
-  topic: string
-  time: string
-  question: string
-  answer: string
-  prdAddition: string
+// 澄清结论摘要(5 维度 · 由产品智能体在 14:08-14:09 整合并展示)
+// 来源:docs/06 §澄清结论摘要 表格原文
+export type ClarifySummaryRow = {
+  dimension: string
+  conclusion: string
+  source: string // 来源轮次(如"第 1 轮")
 }
 
-export const mockSecondClarify: SecondClarify = {
-  topic: 'XSS 缓解策略',
-  time: '14:10',
-  question:
-    '架构师评估发现一个高风险:用户标签输入未明确转义策略,可能产生 XSS。在确认进入拆解前,需要您补充策略。当前可选:\n1. 仅服务端 escape(简单,但前端组件需保证不用 dangerouslySetInnerHTML)\n2. 仅前端转义(依赖 React 自动转义,但服务端入库未净化)\n3. 双保险(服务端 escape + 前端 React 自动转义,且禁用 dangerouslySetInnerHTML)',
-  answer:
-    '选 3,双保险。同时在 PRD 验收标准里加一条:"标签内容存储与展示均不允许 HTML 标签透传"。',
-  prdAddition:
-    '标签内容存储与展示均不允许 HTML 标签透传:服务端入库前转义 + 前端禁用 dangerouslySetInnerHTML 渲染标签。',
+export const mockClarifySummary: ClarifySummaryRow[] = [
+  {
+    dimension: '数据模型',
+    conclusion: '自由输入,关联表存储,每用户 ≤5 个,允许重复名后端去重',
+    source: '第 1 轮',
+  },
+  {
+    dimension: '审核机制',
+    conclusion: '发布后审核,违规隐藏并通知用户(保留申诉)',
+    source: '第 2 轮',
+  },
+  {
+    dimension: 'UX 边界',
+    conclusion: '≤20 字符,支持 emoji(utf8mb4),不参与搜索(V0.3)',
+    source: '第 3 轮',
+  },
+  {
+    dimension: '安全策略',
+    conclusion: 'XSS 双保险:服务端 escape + 前端禁用 dangerouslySetInnerHTML',
+    source: '第 4 轮',
+  },
+  {
+    dimension: '性能策略',
+    conclusion: '在线迁移灰度 + 索引提前;emoji codepoint 边界前后端双校验',
+    source: '第 3 轮',
+  },
+]
+
+// 时刻 A(产品宣布对齐)+ 时刻 B(展示摘要)文案
+// 来源:docs/06 §澄清结论摘要 - 时刻 A / 时刻 B 引文
+export const mockClarifyAlignmentMoment = {
+  // 时刻 A:第 4 轮结束后,产品智能体宣布对齐(14:08)
+  alignmentTime: '14:08',
+  alignment:
+    '协同澄清已对齐。我和架构师智能体正在整合本次澄清的全部结论,稍后会展示澄清结论摘要供您 review。',
+  // 时刻 B:整合完成,产品智能体展示摘要(14:09)
+  presentTime: '14:09',
+  presentIntro: '澄清已对齐,结论摘要如下:',
+  presentOutro:
+    '冻结需求后,产品 / 架构师 / 任务拆解三个智能体会并行产出 PRD、可行性评估、任务图。',
+  // 闸门 1 触发时间(用户在 14:10 点击"冻结需求,开始规划")
+  gate1FiredAt: '14:10',
 }
 
 // ============ 视图 B · PRD ============
 // 来源:docs/06 §PRD
 export type UserStory = { role: string; want: string; reason: string }
-export type AcceptanceCriterion = { text: string; addedBySecondClarify?: boolean }
+// fromCollabClarifyRound4:由协同澄清第 4 轮记录追加(架构师识别 XSS,用户当场决策双保险)
+// 来源 docs/06 §PRD 第 6 条标注"[本条由协同澄清第 4 轮记录追加]"
+export type AcceptanceCriterion = { text: string; fromCollabClarifyRound4?: boolean }
 
 export type PRDDocument = {
   background: string
@@ -463,13 +545,14 @@ export const mockPRD: PRDDocument = {
     {
       text:
         '标签内容存储与展示均不允许 HTML 标签透传:服务端入库前转义 + 前端禁用 dangerouslySetInnerHTML 渲染标签。',
-      addedBySecondClarify: true,
+      fromCollabClarifyRound4: true,
     },
   ],
 }
 
-// ============ 视图 C · 可行性评估(含已驳回动线)============
-// 来源:docs/06 §可行性评估 5.1~5.5
+// ============ 视图 C · 可行性评估(协作模型并行升级:单次评估,无驳回动线)============
+// 来源:docs/06 §可行性评估 5.1~5.3
+// R-001 在协同澄清第 4 轮已敲定缓解策略,直接定为中风险;不再有"驳回 → 二次澄清 → 降级"动线
 export type RiskLevel = '高' | '中' | '低'
 
 export type RiskItem = {
@@ -478,36 +561,31 @@ export type RiskItem = {
   description: string
   scope: string
   mitigation: string
-  degradedFromHigh?: boolean
 }
 
 export type ImplementationDirection = { area: '后端' | '前端' | '测试'; content: string }
 export type KeyDecision = { description: string; reason: string }
 
 export type FeasibilityEvaluation = {
-  firstEvalTime: string
-  rejectedAtTime: string
-  secondEvalTime: string
-  firstRisks: RiskItem[]
-  secondRisks: RiskItem[]
-  firstConclusion: string
-  secondConclusion: string
+  // 架构师独立产出可行性评估时刻(并行模型下,与 PRD / 任务图同时进行)
+  evalTime: string
+  risks: RiskItem[]
+  conclusion: string
   implementationDirections: ImplementationDirection[]
   keyDecisions: KeyDecision[]
 }
 
 export const mockFeasibility: FeasibilityEvaluation = {
-  firstEvalTime: '14:08',
-  rejectedAtTime: '14:08',
-  secondEvalTime: '14:13',
-  firstRisks: [
+  evalTime: '14:13',
+  risks: [
     {
       code: 'R-001',
-      level: '高',
+      level: '中',
       description:
-        '标签注入风险:用户输入未严格校验可能 XSS。当前 PRD 仅约束长度与 emoji,未要求转义策略。',
+        '标签注入风险:用户输入若未严格校验可能 XSS',
       scope: '用户主页展示;管理员审核界面;移动端 webview 内嵌主页',
-      mitigation: '(待用户补充)',
+      mitigation:
+        '服务端 escape + 前端 React 自动转义 + 禁用 dangerouslySetInnerHTML 双保险;任务-4、5 验收标准追加"ESLint 规则不允许 dangerouslySetInnerHTML"。缓解策略源自协同澄清第 4 轮(D-1)。',
     },
     {
       code: 'R-002',
@@ -530,44 +608,34 @@ export const mockFeasibility: FeasibilityEvaluation = {
       description:
         '数据库迁移影响:user 表加新关联表,在线迁移需保证用户读路径不卡顿',
       scope: '用户主页读路径(高 QPS)',
-      mitigation: '索引提前创建 + 灰度发布 + 迁移可逆校验',
+      mitigation:
+        '索引提前创建 + 灰度发布 + 迁移可逆校验。与协同澄清第 4 轮架构师建议一致。',
     },
     {
       code: 'R-005',
       level: '低',
       description: 'emoji 标签存储:必须 utf8mb4 字符集,否则 emoji 入库后变 ?',
       scope: 'DB 字段',
-      mitigation: '在 schema 设计阶段确认 utf8mb4,任务-1 验收',
-    },
-  ],
-  secondRisks: [
-    {
-      code: 'R-001',
-      level: '中',
-      description: '标签注入风险:已落实双保险缓解策略',
-      scope: '用户主页展示;管理员审核界面;移动端 webview 内嵌主页',
       mitigation:
-        '服务端 escape + 前端 React 自动转义 + 禁用 dangerouslySetInnerHTML 双保险;任务-4、5 验收标准追加"代码检查不允许 dangerouslySetInnerHTML"',
-      degradedFromHigh: true,
+        '在 schema 设计阶段确认 utf8mb4,任务-1 验收。与协同澄清第 4 轮架构师建议一致。',
     },
   ],
-  firstConclusion: '有 1 项[高]风险(R-001)未明确缓解策略,触发驳回。',
-  secondConclusion: '最终风险分布:0 高 + 4 中 + 1 低,满足进入拆解条件。',
+  conclusion: '最终风险分布:0 高 + 4 中 + 1 低,满足进入闸门 2 条件。',
   implementationDirections: [
     {
       area: '后端',
       content:
-        'Node.js + TypeScript + Prisma ORM(沿用项目现有栈);标签存储 user_tags 关联表,字段 user_id、tag_name VARCHAR(20) utf8mb4、status ENUM(pending, approved, hidden)、created_at、updated_at;复合索引 (status, created_at)。',
+        'Node.js + TypeScript + Prisma ORM(沿用项目现有栈)。字段级细节(关联表存储、状态枚举、utf8mb4 等)详见澄清记录第 1-3 轮。',
     },
     {
       area: '前端',
       content:
-        'React + TypeScript;主页标签编辑组件复用项目现有 ChipInput 组件,5 上限通过 props 控制;审核界面新建 AdminTagReview 路由组件,使用项目现有 Table 模块。',
+        'React + TypeScript;主页标签编辑组件复用项目现有 ChipInput 组件,5 上限通过 props 控制(对应 D-10);审核界面新建 AdminTagReview 路由组件,使用项目现有 Table 模块;ESLint 规则强约束禁用 dangerouslySetInnerHTML(兑现澄清第 4 轮的双保险策略)。',
     },
     {
       area: '测试',
       content:
-        '单元测试 vitest 沿用;集成测试任务-7 用 supertest 跑前后端联调;端到端测试任务-6 用 playwright,主路径"普通用户登陆 → 编辑标签 → 管理员登陆 → 审核 → 主页验证显示"。',
+        '单元测试 vitest 沿用;集成测试任务-7 用 supertest 跑前后端联调;端到端测试任务-6 用 playwright,主路径"普通用户登录 → 编辑标签 → 管理员登录 → 审核 → 主页验证显示"。',
     },
   ],
   keyDecisions: [
@@ -585,8 +653,9 @@ export const mockFeasibility: FeasibilityEvaluation = {
     },
     {
       description:
-        '驳回缓解策略:服务端 escape + 前端禁用 dangerouslySetInnerHTML 双保险',
-      reason: '本次驳回的产物决策,前后端联合防御 XSS',
+        'XSS 双保险策略:服务端 escape + 前端禁用 dangerouslySetInnerHTML',
+      reason:
+        '源自协同澄清第 4 轮架构师识别 + 用户决策(D-1),落到任务-2 / 任务-4 / 任务-5 验收',
     },
   ],
 }
@@ -668,6 +737,9 @@ export type RequirementGroup = {
   code: string
   name: string
   mainStatus: RequirementMainStatus
+  // 主动添加 · 协作模型升级需要:仅当主状态为"规划中"时填,任务板需求分组标题渲染完整进度指示
+  // 当前 4 需求样例中无"规划中",该字段未填,代码骨架预留
+  subPhase?: RequirementSubPhase
   taskCountReal?: number
   doneCount?: number
   inProgressCount?: number

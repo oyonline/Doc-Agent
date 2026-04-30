@@ -6,25 +6,19 @@ import {
 } from '../lib/mock-data'
 import type {
   RequirementListItem,
-  RequirementMainStatus,
   FocusRequirement,
   FocusTaskStatus,
   DecisionItem,
 } from '../lib/mock-data'
+import RequirementStatusBadge, {
+  getRequirementStatusColor,
+} from '../components/RequirementStatusBadge'
 
 // 需求工作台(V0.2 主入口)
 // 实现入口:docs/08 §需求工作台
 // 三区域:左中需求列表 / 右上当前焦点需求 / 右下待你决策事项
-
-const REQUIREMENT_STATUS_COLOR: Record<RequirementMainStatus, string> = {
-  待澄清: 'var(--color-status-idle)',
-  澄清中: 'var(--color-status-running)',
-  'PRD 已定': 'var(--color-status-verify)',
-  拆解中: 'var(--color-status-verify)',
-  执行中: 'var(--color-status-running)',
-  待审查: 'var(--color-status-review)',
-  已完成: 'var(--color-status-success)',
-}
+// 6 主状态色映射收敛在 RequirementStatusBadge 组件
+// 行内紧凑展示 showProgress=false(规划中不展示进度指示)
 
 export default function Home() {
   return (
@@ -128,15 +122,14 @@ function RequirementListRow({ item }: { item: RequirementListItem }) {
               {item.name}
             </span>
           </div>
-          <span
-            style={{
-              fontSize: 'var(--text-sm)',
-              lineHeight: 'var(--text-sm-lh)',
-              color: REQUIREMENT_STATUS_COLOR[item.mainStatus],
-              flexShrink: 0,
-            }}
-          >
-            {item.mainStatus}
+          <span style={{ flexShrink: 0 }}>
+            {/* 需求工作台行内紧凑:不展示进度指示(showProgress=false) */}
+            <RequirementStatusBadge
+              status={item.mainStatus}
+              subPhase={item.subPhase}
+              showProgress={false}
+              size="sm"
+            />
           </span>
         </div>
         <div
@@ -203,15 +196,13 @@ function FocusRequirementCard({ focus }: { focus: FocusRequirement }) {
           {focus.name}
         </span>
       </div>
-      <div
-        style={{
-          marginTop: 2,
-          fontSize: 'var(--text-sm)',
-          lineHeight: 'var(--text-sm-lh)',
-          color: REQUIREMENT_STATUS_COLOR[focus.mainStatus],
-        }}
-      >
-        {focus.mainStatus}
+      <div style={{ marginTop: 2 }}>
+        {/* 焦点卡片主状态文字(行内紧凑,不展示进度指示) */}
+        <RequirementStatusBadge
+          status={focus.mainStatus}
+          showProgress={false}
+          size="sm"
+        />
       </div>
 
       <CurrentStageIndicator focus={focus} />
@@ -235,11 +226,12 @@ function FocusRequirementCard({ focus }: { focus: FocusRequirement }) {
 }
 
 // 当前阶段指示器(单行)
-// 替代多状态横排,焦点卡片只承担"瞥一眼就懂"的概览职责
-// 完整状态轨迹的展示放到需求详情页
+// 协作模型并行升级后:
+// - 规划中主状态:展示完整进度指示(澄清 ▶ 三产出 ▶ review),由 RequirementStatusBadge 承担
+// - 其他主状态:仅展示"当前阶段 · X 状态",去除原 (N/M) 计数
+//   (状态轨迹长度从 5 升 6,机械计数已失语义,且终态分支"已放弃"也不在主轨迹里)
 function CurrentStageIndicator({ focus }: { focus: FocusRequirement }) {
-  const total = focus.trajectory.length
-  const currentIdx = focus.trajectory.findIndex((n) => n.isCurrent) + 1
+  const isPlanning = focus.mainStatus === '规划中'
   return (
     <div
       className="flex items-baseline"
@@ -254,25 +246,27 @@ function CurrentStageIndicator({ focus }: { focus: FocusRequirement }) {
       >
         当前阶段
       </span>
-      <span
-        style={{
-          fontSize: 'var(--text-sm)',
-          lineHeight: 'var(--text-sm-lh)',
-          color: REQUIREMENT_STATUS_COLOR[focus.mainStatus],
-          fontWeight: 500,
-        }}
-      >
-        {focus.mainStatus}
-      </span>
-      <span
-        style={{
-          fontSize: 'var(--text-xs)',
-          lineHeight: 'var(--text-xs-lh)',
-          color: 'var(--color-text-3)',
-        }}
-      >
-        ({currentIdx}/{total})
-      </span>
+      {isPlanning ? (
+        // 规划中:渲染带进度指示的徽章(showProgress=true)
+        // 主动添加 · 协作模型升级需要:focus.subPhase 由 mock 提供,默认假设三产出已完成 = 'review'
+        <RequirementStatusBadge
+          status={focus.mainStatus}
+          subPhase="review"
+          showProgress
+          size="sm"
+        />
+      ) : (
+        <span
+          style={{
+            fontSize: 'var(--text-sm)',
+            lineHeight: 'var(--text-sm-lh)',
+            color: getRequirementStatusColor(focus.mainStatus),
+            fontWeight: 500,
+          }}
+        >
+          {focus.mainStatus}
+        </span>
+      )}
     </div>
   )
 }

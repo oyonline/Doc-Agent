@@ -7,31 +7,25 @@ import {
 } from '../lib/mock-data'
 import type {
   RequirementGroup,
-  RequirementMainStatus,
   TaskProgressItem,
   RiskLevel,
 } from '../lib/mock-data'
+import RequirementStatusBadge, {
+  getRequirementStatusColor,
+} from '../components/RequirementStatusBadge'
 
 // 任务板(V0.2 重做版)
 // 实现入口:docs/08 §任务板
 // 从"五列状态看板"扩展为"按需求分组的任务池视图"
 // 顶部需求过滤器 + 主区域按需求分组的任务卡
 // V0.2.0 阶段:任务-7 占位,需求-002 默认折叠
+// 协作模型并行升级后:GroupHeader 接 RequirementStatusBadge(showProgress=true),
+// 当前 4 需求中无"规划中"主状态,代码骨架预留
 //
 // 严禁:
 // - 任务图节点不能出现在任务板(那是需求详情页的事)
 // - 任务-7 不当作真实任务展示
 // - 任务卡不展示伪 token 百分比
-
-const REQUIREMENT_STATUS_COLOR: Record<RequirementMainStatus, string> = {
-  待澄清: 'var(--color-status-idle)',
-  澄清中: 'var(--color-status-running)',
-  'PRD 已定': 'var(--color-status-verify)',
-  拆解中: 'var(--color-status-verify)',
-  执行中: 'var(--color-status-running)',
-  待审查: 'var(--color-status-review)',
-  已完成: 'var(--color-status-success)',
-}
 
 const TASK_STATUS_COLOR: Record<TaskProgressItem['status'], string> = {
   待处理: 'var(--color-status-idle)',
@@ -179,7 +173,7 @@ function RequirementFilter({
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: REQUIREMENT_STATUS_COLOR[g.mainStatus],
+                background: getRequirementStatusColor(g.mainStatus),
                 display: 'inline-block',
               }}
             />
@@ -292,14 +286,15 @@ function GroupHeader({
           {group.name}
         </span>
       </Link>
-      <span
-        style={{
-          fontSize: 'var(--text-sm)',
-          color: REQUIREMENT_STATUS_COLOR[group.mainStatus],
-          flexShrink: 0,
-        }}
-      >
-        {group.mainStatus}
+      <span style={{ flexShrink: 0 }}>
+        {/* 任务板需求分组标题:展示完整进度指示(showProgress=true)
+            当前 4 需求中无"规划中"主状态,代码骨架预留 */}
+        <RequirementStatusBadge
+          status={group.mainStatus}
+          subPhase={group.subPhase}
+          showProgress
+          size="sm"
+        />
       </span>
       {progress && (
         <span
