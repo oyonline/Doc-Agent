@@ -1,12 +1,10 @@
+import { V02Placeholder } from './agents'
+
 export default function Workflows() {
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-xl)', lineHeight: 'var(--text-xl-lh)', fontWeight: 600, margin: 0 }}>
-        工作流
-      </h1>
-      <p className="text-text-3" style={{ marginTop: 'var(--space-2)' }}>
-        骨架阶段占位,后续提示词会填充内容。
-      </p>
-    </div>
+    <V02Placeholder
+      title="工作流"
+      hint="V0.2 暂未开放,V0.3 启用。当前 V0.2 通过需求-任务-运行三层粒度组织工作,工作流复用沉淀留 V0.3。"
+    />
   )
 }

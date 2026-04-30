@@ -1,12 +1,10 @@
+import { V02Placeholder } from './agents'
+
 export default function Settings() {
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-xl)', lineHeight: 'var(--text-xl-lh)', fontWeight: 600, margin: 0 }}>
-        设置
-      </h1>
-      <p className="text-text-3" style={{ marginTop: 'var(--space-2)' }}>
-        骨架阶段占位,后续提示词会填充内容。
-      </p>
-    </div>
+    <V02Placeholder
+      title="设置"
+      hint="V0.2 暂未开放,V0.3 启用。安全模式 / 自动合并 / 外部网络 / 密钥访问 等设置当前在右侧状态栏只读展示。"
+    />
   )
 }

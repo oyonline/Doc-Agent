@@ -891,3 +891,658 @@ export const mockRequirementReview: RequirementReviewPackage = {
   // 当前需求虽无高风险,但有 1 项严重跨任务问题(#1),触发"接受需求结果"二次确认
   isHighRisk: true,
 }
+
+// ============ 任务详情数据(任务-1/2 完整、3-6 精简、7 占位)============
+// 来源:docs/06 §7.1~7.7
+// 时刻基准:T5+ 完成时刻(主流程演进结束)
+// 注意:与外壳/任务板 T0 时刻状态不一致,demo 已知;任务详情页提供"任务全生命周期"视角
+// V0.2.0 阶段任务-7 占位,内容字段大都不展开
+
+export type TaskDetailContext = {
+  role: string
+  task: string
+  projectRules: string
+  workspace: string
+  validations: string
+  lastFeedback: string
+  safetyMode: '严格' | '宽松'
+}
+
+export type TaskRunRecord = {
+  id: string
+  startedAt: string
+  endedAt: string | null
+  result: string
+  validation: string
+  trigger?: string
+}
+
+export type FileChange = {
+  file: string
+  type: '新增' | '修改' | '删除'
+  addedLines?: number
+  removedLines?: number
+  noteApprox?: boolean
+}
+
+export type FileDiff = { file: string; diff: string }
+
+export type ValidationItem = {
+  name: string
+  result: '通过' | '未通过' | '跳过'
+  detail: string
+}
+
+export type TaskReviewBundle = {
+  summary: string
+  agentSummary: string
+  acceptanceResult: string
+  risks: string
+  suggestion: string
+}
+
+export type TaskDetailFull = {
+  id: string
+  shortName: string
+  fullName: string
+  agentType: '后端' | '前端' | '测试'
+  status: TaskStatus | '占位'
+  anomalies: AnomalyTag[]
+  validation: string
+  riskLevel?: RiskLevel
+  isPlaceholder?: boolean
+
+  overview: { goal: string; dependencies: string; workspace: string }
+  context: TaskDetailContext
+  acceptanceCriteria: string[]
+  runs: TaskRunRecord[]
+
+  timeline: { time: string; text: string }[]
+  changes: FileChange[]
+  diffs: FileDiff[]
+  validations: ValidationItem[]
+  review: TaskReviewBundle
+}
+
+export const mockTaskDetails: Record<string, TaskDetailFull> = {
+  '1': {
+    id: '1',
+    shortName: '标签 schema 设计',
+    fullName: '标签数据库 schema 设计 + 迁移',
+    agentType: '后端',
+    status: '已完成',
+    anomalies: [],
+    validation: '4/4 通过',
+    riskLevel: '中',
+    overview: {
+      goal: '为用户标签功能设计数据库 schema(user_tags 关联表),并产出迁移脚本。',
+      dependencies: '无前置任务',
+      workspace: 'feat/tags-schema',
+    },
+    context: {
+      role: '后端智能体',
+      task: '为用户标签功能设计 user_tags 关联表,产出 schema + 迁移脚本',
+      projectRules: '使用 Prisma ORM;字段命名 snake_case;迁移脚本必须可逆',
+      workspace: 'feat/tags-schema(独立分支)',
+      validations: '迁移脚本应用 + 回滚双向测试 + 索引存在性校验 + utf8mb4 字符集校验',
+      lastFeedback: '无',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      'user_tags 表创建成功,字段:id、user_id、tag_name VARCHAR(20)、status ENUM(pending, approved, hidden)、created_at、updated_at',
+      '字段 tag_name 字符集为 utf8mb4,可存储 emoji',
+      '复合索引 (status, created_at) 创建成功',
+      '迁移脚本可逆(up + down 都能执行)',
+    ],
+    runs: [
+      { id: '1', startedAt: '14:15', endedAt: '14:23', result: '已完成', validation: '4/4 通过', trigger: '首次提交' },
+    ],
+    timeline: [
+      { time: '14:15', text: '任务-1 已分发给后端智能体' },
+      { time: '14:15', text: '后端智能体已开始执行任务-1' },
+      { time: '14:16', text: '后端智能体读取了 prisma/schema.prisma' },
+      { time: '14:18', text: '后端智能体修改了 prisma/schema.prisma' },
+      { time: '14:20', text: '后端智能体新增了 prisma/migrations/20260429_add_user_tags/migration.sql' },
+      { time: '14:21', text: '跑迁移脚本(up)' },
+      { time: '14:22', text: '跑迁移脚本(down)— 验证可逆' },
+      { time: '14:22', text: '任务内验证全部通过(4/4)' },
+      { time: '14:23', text: '任务-1 单任务审查包已生成' },
+      { time: '14:23', text: '任务-1 等待人工接受(数据层闸门)' },
+    ],
+    changes: [
+      { file: 'prisma/schema.prisma', type: '修改', addedLines: 14, removedLines: 0 },
+      { file: 'prisma/migrations/20260429_add_user_tags/migration.sql', type: '新增', addedLines: 22, removedLines: 0 },
+    ],
+    diffs: [
+      {
+        file: 'prisma/schema.prisma',
+        diff: `+ model UserTag {
++   id         Int       @id @default(autoincrement())
++   userId     Int       @map("user_id")
++   tagName    String    @map("tag_name") @db.VarChar(20)
++   status     TagStatus @default(pending)
++   createdAt  DateTime  @default(now()) @map("created_at")
++   updatedAt  DateTime  @updatedAt        @map("updated_at")
++
++   user       User      @relation(fields: [userId], references: [id])
++
++   @@map("user_tags")
++   @@index([status, createdAt], name: "idx_status_created_at")
++ }
++
++ enum TagStatus {
++   pending
++   approved
++   hidden
++ }`,
+      },
+    ],
+    validations: [
+      { name: '单元测试', result: '跳过', detail: '0/0(schema 任务无单元测试)' },
+      { name: '代码检查', result: '通过', detail: '0 警告' },
+      { name: '类型检查', result: '通过', detail: 'Prisma generate 无错误' },
+      { name: '迁移可逆校验', result: '通过', detail: 'up + down 双向测试均通过' },
+    ],
+    review: {
+      summary: '为用户标签功能设计数据库 schema 并产出迁移脚本。',
+      agentSummary:
+        'UserTag 模型已建立,关联 User,字段长度 20 字符,utf8mb4 兼容 emoji。(status, created_at) 复合索引支持后续审核分页。迁移脚本可逆,up + down 双向测试通过。',
+      acceptanceResult: '4/4 通过',
+      risks: '对 user 表加新关联表,在线灰度需注意大表迁移性能(对应 R-004)',
+      suggestion: '迁移脚本结构合理,字段命名符合 snake_case 规范,可接受。',
+    },
+  },
+
+  '2': {
+    id: '2',
+    shortName: '标签 CRUD API',
+    fullName: '标签 CRUD API 实现',
+    agentType: '后端',
+    status: '已完成',
+    anomalies: [],
+    validation: '5/5 通过',
+    riskLevel: '中',
+    overview: {
+      goal: '实现 GET/POST/PUT/DELETE 四个 RESTful 标签 API,基于任务-1 schema。',
+      dependencies: '任务-1',
+      workspace: 'feat/tags-api',
+    },
+    context: {
+      role: '后端智能体',
+      task: '实现标签 CRUD API,4 个 endpoint(GET 列表 / POST 新建 / PUT 更新 / DELETE 删除)',
+      projectRules:
+        'Express.js + Prisma;每个 endpoint 必须有单元测试;参数校验用 zod;新建标签默认 status = pending(对应 PRD 第 6 条与跨任务一致性 #1)',
+      workspace: 'feat/tags-api',
+      validations: '单元测试 / 代码检查 / 类型检查 / 契约校验 / 服务端 escape 检查',
+      lastFeedback: '无',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      'GET /api/tags 返回当前用户的标签列表,支持游标分页',
+      'POST /api/tags 创建新标签,默认 status = pending,长度校验 ≤20,允许重复名内部去重',
+      'PUT /api/tags/:id 更新标签名(仅本人可改)',
+      'DELETE /api/tags/:id 删除标签(硬删除默认;预留软删除走 PUT 改 status = hidden)',
+      '全部 endpoint 单元测试通过,服务端 escape 已实现',
+    ],
+    runs: [
+      { id: '1', startedAt: '14:24', endedAt: '14:51', result: '已完成', validation: '5/5 通过', trigger: '首次提交' },
+    ],
+    timeline: [
+      { time: '14:24', text: '任务-2 已分发给后端智能体' },
+      { time: '14:24', text: '后端智能体已开始执行任务-2' },
+      { time: '14:30', text: '设计 GET /api/tags 接口结构' },
+      { time: '14:33', text: '实现 GET /api/tags(游标分页)' },
+      { time: '14:38', text: '实现 POST /api/tags(默认 pending,服务端 escape)' },
+      { time: '14:42', text: '实现 PUT /api/tags/:id(本人鉴权)' },
+      { time: '14:45', text: '实现 DELETE /api/tags/:id(硬删除)' },
+      { time: '14:48', text: '修复 emoji 截断 bug(grapheme cluster 拆分)' },
+      { time: '14:50', text: '任务内验证全部通过(5/5)' },
+      { time: '14:51', text: '任务-2 单任务审查包已生成,自动放行' },
+    ],
+    changes: [
+      { file: 'src/api/tags/index.ts', type: '新增', addedLines: 98, removedLines: 0 },
+      { file: 'src/api/tags/tags.test.ts', type: '新增', addedLines: 156, removedLines: 0 },
+      { file: 'src/api/schema/tags.ts', type: '新增', addedLines: 24, removedLines: 0 },
+    ],
+    diffs: [
+      {
+        file: 'src/api/tags/index.ts',
+        diff: `+ import { Router } from 'express'
++ import { prisma } from '@/lib/prisma'
++ import { tagInputSchema } from './tags.schema'
++ import { escape } from '@/lib/sanitize'
++
++ export const tagsRouter = Router()
++
++ // GET /api/tags — 当前用户的标签列表(游标分页)
++ tagsRouter.get('/', async (req, res) => {
++   const cursor = req.query.cursor ? Number(req.query.cursor) : undefined
++   const tags = await prisma.userTag.findMany({
++     where: { userId: req.user.id, status: { not: 'hidden' } },
++     take: 20,
++     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
++     orderBy: { createdAt: 'desc' },
++   })
++   res.json({ tags, nextCursor: tags.at(-1)?.id ?? null })
++ })
++
++ // POST /api/tags — 新建标签(默认 pending)
++ tagsRouter.post('/', async (req, res) => {
++   const parsed = tagInputSchema.parse(req.body)
++   const safeName = escape(parsed.tagName)
++   // 同用户重复名静默忽略
++   const existing = await prisma.userTag.findFirst({
++     where: { userId: req.user.id, tagName: safeName },
++   })
++   if (existing) return res.status(200).json({ tag: existing })
++   const created = await prisma.userTag.create({
++     data: { userId: req.user.id, tagName: safeName, status: 'pending' },
++   })
++   res.status(201).json({ tag: created })
++ })`,
+      },
+    ],
+    validations: [
+      { name: '单元测试', result: '通过', detail: '22 / 22' },
+      { name: '代码检查', result: '通过', detail: '0 警告' },
+      { name: '类型检查', result: '通过', detail: '0 错误' },
+      { name: '契约校验', result: '通过', detail: 'OpenAPI 与实现匹配' },
+      { name: '服务端 escape 检查', result: '通过', detail: '全部 endpoint 输入均经过 escape' },
+    ],
+    review: {
+      summary: '实现标签 CRUD API,4 endpoint。',
+      agentSummary:
+        'GET 支持游标分页;POST 默认 status = pending,同用户重名静默去重;PUT 限本人;DELETE 默认硬删除,软删除留 PUT 改 status。服务端 escape 接入,单元测试覆盖正常 + 边界,共 22 项全通过。',
+      acceptanceResult: '5/5 通过',
+      risks:
+        '重名静默去重对前端不友好(用户不知道为什么"看似新建却没出现"),需任务-4 配合显示 toast(对应跨任务一致性 #2)。',
+      suggestion: '接受,但建议跨任务对齐(任务-4 提示用户)。',
+    },
+  },
+
+  '3': {
+    id: '3',
+    shortName: '标签审核 API',
+    fullName: '标签审核 API(管理员)',
+    agentType: '后端',
+    status: '已完成',
+    anomalies: [],
+    validation: '4/4 通过',
+    riskLevel: '中',
+    overview: {
+      goal: '实现 3 个管理员鉴权的审核 API:列表 / 批准 / 隐藏(隐藏附带用户通知)。',
+      dependencies: '任务-1',
+      workspace: 'feat/tags-admin-api',
+    },
+    context: {
+      role: '后端智能体',
+      task: '实现标签审核 API,3 endpoint(列表 / 批准 / 隐藏)',
+      projectRules: 'Express.js + Prisma;复用 requireAdmin middleware;通知接入项目现有 notification 模块',
+      workspace: 'feat/tags-admin-api',
+      validations: '单元测试 / 代码检查 / 类型检查 / 契约校验',
+      lastFeedback: '无',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      'GET /api/admin/tags 返回全平台待审核标签列表,管理员鉴权',
+      'POST /api/admin/tags/:id/approve 批准标签',
+      'POST /api/admin/tags/:id/hide 隐藏标签 + 通知用户',
+      '全部 endpoint 鉴权检查管理员角色,非管理员 403',
+    ],
+    runs: [
+      { id: '1', startedAt: '14:24', endedAt: '14:54', result: '已完成', validation: '4/4 通过', trigger: '首次提交' },
+    ],
+    timeline: [
+      { time: '14:24', text: '任务-3 已分发给后端智能体' },
+      { time: '14:24', text: '后端智能体已开始执行任务-3' },
+      { time: '14:35', text: '复用 requireAdmin middleware,实现 3 endpoint' },
+      { time: '14:50', text: '接入 notification 模块,模板"您的标签已被隐藏"' },
+      { time: '14:53', text: '任务内验证全部通过(4/4)' },
+      { time: '14:54', text: '任务-3 单任务审查包已生成,自动放行' },
+    ],
+    changes: [
+      { file: 'src/api/admin/tags/index.ts', type: '新增', addedLines: 110, removedLines: 0, noteApprox: true },
+      { file: 'src/api/admin/tags/tags.test.ts', type: '新增', addedLines: 140, removedLines: 0, noteApprox: true },
+      { file: 'src/lib/notification/tag-hidden.ts', type: '新增', addedLines: 30, removedLines: 0, noteApprox: true },
+    ],
+    diffs: [
+      {
+        file: 'src/api/admin/tags/index.ts',
+        diff: `+ import { Router } from 'express'
++ import { requireAdmin } from '@/middleware/require-admin'
++ import { prisma } from '@/lib/prisma'
++ import { notifyTagHidden } from '@/lib/notification/tag-hidden'
++
++ export const adminTagsRouter = Router()
++ adminTagsRouter.use(requireAdmin)
++
++ // 列表(待审核)
++ adminTagsRouter.get('/', async (_req, res) => { /* ... */ })
++
++ // 批准
++ adminTagsRouter.post('/:id/approve', async (req, res) => { /* ... */ })
++
++ // 隐藏 + 通知用户
++ adminTagsRouter.post('/:id/hide', async (req, res) => {
++   const tag = await prisma.userTag.update({
++     where: { id: Number(req.params.id) },
++     data: { status: 'hidden' },
++   })
++   await notifyTagHidden(tag)
++   res.json({ tag })
++ })`,
+      },
+    ],
+    validations: [
+      { name: '单元测试', result: '通过', detail: '18 / 18' },
+      { name: '代码检查', result: '通过', detail: '0 警告' },
+      { name: '类型检查', result: '通过', detail: '0 错误' },
+      { name: '契约校验', result: '通过', detail: 'OpenAPI 与实现匹配' },
+    ],
+    review: {
+      summary: '实现 3 endpoint:列表 / 批准 / 隐藏(隐藏附带用户通知)。',
+      agentSummary:
+        '鉴权基于现有 requireAdmin middleware 复用;通知接入项目现有 notification 模块,模板"您的标签 \'{tagName}\' 因违规被隐藏"。',
+      acceptanceResult: '4/4 通过',
+      risks: '批准 / 隐藏后需要返回最新状态供任务-5 前端刷新,该约束已在跨任务一致性 #3 中识别',
+      suggestion: '接受。注意:批准 / 隐藏后需要返回最新状态供任务-5 前端刷新。',
+    },
+  },
+
+  '4': {
+    id: '4',
+    shortName: '主页编辑组件',
+    fullName: '用户主页标签编辑组件',
+    agentType: '前端',
+    status: '已完成',
+    anomalies: [],
+    validation: '5/5 通过',
+    riskLevel: '中',
+    overview: {
+      goal: '主页头像下方一行内展示用户标签,最多 5 个,可编辑(添加 / 删除)。',
+      dependencies: '任务-7',
+      workspace: 'feat/tags-profile',
+    },
+    context: {
+      role: '前端智能体',
+      task: '实现用户主页 TagEditor 与 TagDisplay 组件,嵌入主页 [id].tsx',
+      projectRules:
+        'React + TypeScript;复用项目现有 ChipInput;ESLint 强制禁用 dangerouslySetInnerHTML',
+      workspace: 'feat/tags-profile',
+      validations: '单元测试 / 代码检查(含 dangerouslySetInnerHTML 规则)/ 类型检查 / 契约校验 / 视觉回归',
+      lastFeedback: '无',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      '主页头像下方一行内展示用户标签,最多 5 个',
+      '编辑模式下可添加 / 删除标签,超过 5 个无法新增,组件给提示',
+      '标签长度校验 ≤20 字符,前端硬约束输入框',
+      '不允许 dangerouslySetInnerHTML(对应 D-1 双保险约束 + ESLint 规则强制)',
+      '单元测试 + 视觉回归测试通过',
+    ],
+    runs: [
+      { id: '1', startedAt: '15:01', endedAt: '15:18', result: '已完成', validation: '5/5 通过', trigger: '首次提交' },
+    ],
+    timeline: [
+      { time: '15:01', text: '任务-4 已分发给前端智能体' },
+      { time: '15:01', text: '前端智能体已开始执行任务-4' },
+      { time: '15:09', text: '完成 TagEditor + 单元测试' },
+      { time: '15:14', text: '完成 TagDisplay,嵌入主页 [id].tsx' },
+      { time: '15:17', text: '视觉回归通过' },
+      { time: '15:18', text: '任务-4 单任务审查包已生成,自动放行' },
+    ],
+    changes: [
+      { file: 'src/components/profile/TagEditor.tsx', type: '新增', addedLines: 120, noteApprox: true },
+      { file: 'src/components/profile/TagDisplay.tsx', type: '新增', addedLines: 60, noteApprox: true },
+      { file: 'src/components/profile/TagEditor.test.tsx', type: '新增', addedLines: 95, noteApprox: true },
+      { file: 'src/pages/profile/[id].tsx', type: '修改', addedLines: 12, removedLines: 3 },
+    ],
+    diffs: [
+      {
+        file: 'src/components/profile/TagEditor.tsx',
+        diff: `+ import { ChipInput } from '@/components/common/ChipInput'
++
++ const MAX_TAGS = 5
++ const MAX_TAG_LEN = 20
++
++ export function TagEditor({ tags, onChange }: { tags: string[]; onChange: (next: string[]) => void }) {
++   const handleAdd = (next: string) => {
++     if (tags.length >= MAX_TAGS) return alert('已达上限 5 个')
++     if (next.length > MAX_TAG_LEN) return alert('标签长度需 ≤ 20 字符')
++     onChange([...tags, next])
++   }
++   const handleRemove = (i: number) => onChange(tags.filter((_, idx) => idx !== i))
++   return <ChipInput chips={tags} onAdd={handleAdd} onRemove={handleRemove} />
++ }`,
+      },
+    ],
+    validations: [
+      { name: '单元测试', result: '通过', detail: '14 / 14' },
+      { name: '代码检查', result: '通过', detail: '0 警告(含 ESLint 规则禁用 dangerouslySetInnerHTML)' },
+      { name: '类型检查', result: '通过', detail: '0 错误' },
+      { name: '契约校验', result: '通过', detail: 'API 调用与任务-2 OpenAPI 匹配' },
+      { name: '视觉回归', result: '通过', detail: '主页头像下方一行排版正常' },
+    ],
+    review: {
+      summary: '主页 TagEditor + TagDisplay 组件,嵌入 [id].tsx。',
+      agentSummary:
+        'TagEditor 复用 ChipInput,5 上限通过 props(D-10);TagDisplay 静态渲染依赖 React 自动转义,无 dangerouslySetInnerHTML(D-11);主页 [id].tsx 嵌入 TagDisplay。',
+      acceptanceResult: '5/5 通过',
+      risks: '任务-2 重名静默去重未在前端提示用户(对应跨任务一致性 #2)',
+      suggestion: '接受。建议跨任务一致性 #2 后续补 toast。',
+    },
+  },
+
+  '5': {
+    id: '5',
+    shortName: '管理员审核界面',
+    fullName: '管理员审核界面',
+    agentType: '前端',
+    status: '已完成',
+    anomalies: [],
+    validation: '4/4 通过',
+    riskLevel: '低',
+    overview: {
+      goal: '/admin/tags 路由展示标签列表,可分页;单条标签可批准或隐藏。',
+      dependencies: '任务-7',
+      workspace: 'feat/tags-admin-ui',
+    },
+    context: {
+      role: '前端智能体',
+      task: '实现 /admin/tags 路由 + TagReviewTable 组件,接入任务-3 API',
+      projectRules: 'React + TypeScript;复用 Table 组件;optimistic update + 失败回滚',
+      workspace: 'feat/tags-admin-ui',
+      validations: '单元测试 / 代码检查 / 类型检查 / 契约校验',
+      lastFeedback: '无',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      '/admin/tags 路由展示标签列表,可分页',
+      '单条标签可点击"批准"或"隐藏"按钮,操作后立即刷新该行状态',
+      '鉴权:非管理员访问 /admin/tags 跳转登录页',
+      '不允许 dangerouslySetInnerHTML',
+    ],
+    runs: [
+      { id: '1', startedAt: '15:01', endedAt: '15:19', result: '已完成', validation: '4/4 通过', trigger: '首次提交' },
+    ],
+    timeline: [
+      { time: '15:01', text: '任务-5 已分发给前端智能体' },
+      { time: '15:01', text: '前端智能体已开始执行任务-5' },
+      { time: '15:13', text: '完成 TagReviewTable + optimistic update' },
+      { time: '15:18', text: '任务内验证全部通过(4/4)' },
+      { time: '15:19', text: '任务-5 单任务审查包已生成,自动放行' },
+    ],
+    changes: [
+      { file: 'src/pages/admin/tags/index.tsx', type: '新增', addedLines: 150, noteApprox: true },
+      { file: 'src/components/admin/TagReviewTable.tsx', type: '新增', addedLines: 110, noteApprox: true },
+      { file: 'src/pages/admin/tags/index.test.tsx', type: '新增', addedLines: 80, noteApprox: true },
+    ],
+    diffs: [
+      {
+        file: 'src/components/admin/TagReviewTable.tsx',
+        diff: `+ import { Table } from '@/components/common/Table'
++ import { useApproveTag, useHideTag } from '@/api/admin-tags'
++
++ export function TagReviewTable({ rows }: { rows: AdminTag[] }) {
++   const approve = useApproveTag()
++   const hide = useHideTag()
++   return (
++     <Table
++       rows={rows}
++       columns={[
++         { key: 'id', title: 'ID' },
++         { key: 'tagName', title: '标签名' },
++         { key: 'status', title: '状态' },
++         {
++           key: 'actions',
++           title: '操作',
++           render: (row) => (
++             <>
++               <button onClick={() => approve.mutate(row.id)}>批准</button>
++               <button onClick={() => hide.mutate(row.id)}>隐藏</button>
++             </>
++           ),
++         },
++       ]}
++     />
++   )
++ }`,
+      },
+    ],
+    validations: [
+      { name: '单元测试', result: '通过', detail: '11 / 11' },
+      { name: '代码检查', result: '通过', detail: '0 警告' },
+      { name: '类型检查', result: '通过', detail: '0 错误' },
+      { name: '契约校验', result: '通过', detail: 'API 调用与任务-3 OpenAPI 匹配' },
+    ],
+    review: {
+      summary: '/admin/tags 路由 + TagReviewTable,接入任务-3 API。',
+      agentSummary:
+        '复用 Table 组件;操作后调用任务-3 API,本地 optimistic update,失败回滚(D-12);鉴权用现有 requireAdmin HOC。',
+      acceptanceResult: '4/4 通过',
+      risks: 'operation 完成后未主动调任务-2 列表 API 刷新主页(对应跨任务一致性 #3)',
+      suggestion: '接受。建议跨任务一致性 #3 后续补一次主页刷新或 SWR 缓存失效。',
+    },
+  },
+
+  '6': {
+    id: '6',
+    shortName: '端到端测试',
+    fullName: '标签流程端到端测试',
+    agentType: '测试',
+    status: '已完成',
+    anomalies: [],
+    validation: '4/4 通过',
+    riskLevel: '低',
+    overview: {
+      goal: '端到端测试覆盖主路径:用户登录 → 编辑标签 → 管理员登录 → 审核 → 主页验证。',
+      dependencies: '任务-4 + 任务-5',
+      workspace: 'feat/tags-e2e',
+    },
+    context: {
+      role: '测试智能体',
+      task: '用 playwright 实现 3 条端到端用例',
+      projectRules: 'playwright;每个 case 后清理数据;CI 上稳定运行,无 flaky',
+      workspace: 'feat/tags-e2e',
+      validations: '端到端测试 / 代码检查 / 类型检查 / Flaky 检测',
+      lastFeedback: '无',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      '端到端测试覆盖主路径:普通用户登录 → 编辑标签 → 管理员登录 → 审核 → 主页验证显示',
+      '测试覆盖至少 1 条违规标签隐藏路径',
+      '测试在 CI 上稳定运行,无 flaky',
+      '测试通过率 100%',
+    ],
+    runs: [
+      { id: '1', startedAt: '15:20', endedAt: '15:36', result: '已完成', validation: '4/4 通过', trigger: '首次提交' },
+    ],
+    timeline: [
+      { time: '15:20', text: '任务-6 已分发给测试智能体' },
+      { time: '15:20', text: '测试智能体已开始执行任务-6' },
+      { time: '15:30', text: '完成 3 条 playwright 用例(正常路径 / 5 标签上限 / 违规隐藏)' },
+      { time: '15:35', text: '连续 5 次执行均稳定,无 flaky' },
+      { time: '15:36', text: '任务-6 单任务审查包已生成,等待人工接受(端到端闸门)' },
+    ],
+    changes: [
+      { file: 'e2e/tags-flow.spec.ts', type: '新增', addedLines: 180, noteApprox: true },
+      { file: 'e2e/fixtures/users.ts', type: '修改', addedLines: 20, removedLines: 0 },
+    ],
+    diffs: [
+      {
+        file: 'e2e/tags-flow.spec.ts',
+        diff: `+ import { test, expect } from '@playwright/test'
++ import { loginAs } from './fixtures/users'
++
++ test('用户编辑标签后,管理员审核通过,主页显示', async ({ page }) => {
++   await loginAs(page, 'user')
++   await page.goto('/profile/me/edit')
++   await page.fill('[data-testid="tag-input"]', '前端工程师')
++   await page.click('[data-testid="add-tag"]')
++   await loginAs(page, 'admin')
++   await page.goto('/admin/tags')
++   await page.click('[data-testid="approve-1"]')
++   await page.goto('/profile/me')
++   await expect(page.locator('[data-testid="tag-display"]')).toContainText('前端工程师')
++ })`,
+      },
+    ],
+    validations: [
+      { name: '端到端测试', result: '通过', detail: '3 / 3' },
+      { name: '代码检查', result: '通过', detail: '0 警告' },
+      { name: '类型检查', result: '通过', detail: '0 错误' },
+      { name: 'Flaky 检测', result: '通过', detail: '连续 5 次执行均稳定' },
+    ],
+    review: {
+      summary: 'playwright 端到端测试 3 条用例,覆盖主路径 + 5 标签上限 + 违规隐藏。',
+      agentSummary:
+        '用 fixture user 模拟 + 数据库 seed,在每个 case 后清理。3 条用例全部通过,无 flaky。',
+      acceptanceResult: '4/4 通过',
+      risks: '未覆盖 emoji 标签(对应跨任务一致性 #6),emoji 用例放本地单元测试覆盖(D-13)',
+      suggestion: '接受。emoji 端到端覆盖留 V0.3 锚点。',
+    },
+  },
+
+  '7': {
+    id: '7',
+    shortName: '后端集成测试',
+    fullName: '后端集成测试(V0.2.0 占位)',
+    agentType: '测试',
+    status: '占位',
+    anomalies: [],
+    validation: '占位 · 不参与本次审查',
+    isPlaceholder: true,
+    overview: {
+      goal: '集成测试覆盖任务-2、3 全部 endpoint 联调(V0.2.1 阶段激活)',
+      dependencies: '任务-2 + 任务-3',
+      workspace: '(V0.2.1 激活后分配)',
+    },
+    context: {
+      role: '测试智能体',
+      task: '(V0.2.0 阶段占位,任务未启动)',
+      projectRules: '—',
+      workspace: '—',
+      validations: '—',
+      lastFeedback: '—',
+      safetyMode: '严格',
+    },
+    acceptanceCriteria: [
+      '集成测试覆盖任务-2、3 全部 endpoint 联调(待 V0.2.1)',
+      '测试覆盖前后端数据契约一致性',
+      '测试通过率 100%',
+      'CI 集成测试时间 < 60 秒',
+    ],
+    runs: [],
+    timeline: [],
+    changes: [],
+    diffs: [],
+    validations: [],
+    review: {
+      summary: '(V0.2.0 阶段占位,任务未启动)',
+      agentSummary: '—',
+      acceptanceResult: '—',
+      risks: '—',
+      suggestion: '—',
+    },
+  },
+}
